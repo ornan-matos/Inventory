@@ -5,6 +5,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = "django-insecure-your-secret-key-here"
 DEBUG = True
 ALLOWED_HOSTS = ["awspos.duckdns.org", "localhost", "127.0.0.1"]
+CSRF_TRUSTED_ORIGINS = ["https://awspos.duckdns.org"]
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -85,4 +86,3 @@ LOGIN_REDIRECT_URL = "home"
 LOGOUT_REDIRECT_URL = "login"
 
 SESSION_COOKIE_AGE = 86400
-
