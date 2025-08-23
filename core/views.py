@@ -4,13 +4,11 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
 from django.utils import timezone
+from django.db.models import Q
 from .models import Maquina, Operacao, CodigoConfirmacao, CustomUser
 from .forms import MaquinaForm, CodigoConfirmacaoForm
 
 def admin_required(view_func):
-    """
-    Decorator que verifica se o usuário logado é um administrador.
-    """
     decorated_view = user_passes_test(
         lambda u: u.is_authenticated and u.user_type == 'admin',
         login_url='login',
@@ -20,10 +18,17 @@ def admin_required(view_func):
 
 @login_required
 def home(request):
-    """
-    Página inicial que lista as máquinas e verifica quais têm operações pendentes.
-    """
+
+    query = request.GET.get('q')
     maquinas = Maquina.objects.all().order_by('nome')
+    if query:
+        maquinas = maquinas.filter(
+            Q(nome__icontains=query) |
+            Q(tipo_modelo__icontains=query) |
+            Q(patrimonio__icontains=query) |
+            Q(numero_serie__icontains=query)
+        )
+
     maquinas_disponiveis = Maquina.objects.filter(status='disponivel').count()
     maquinas_com_retirada_pendente = CodigoConfirmacao.objects.filter(
         tipo_operacao='retirada',
@@ -33,64 +38,36 @@ def home(request):
         tipo_operacao='devolucao',
         expira_em__gt=timezone.now()
     ).values_list('maquina_id', flat=True)
+
     context = {
         'maquinas': maquinas,
         'maquinas_disponiveis': maquinas_disponiveis,
         'maquinas_com_retirada_pendente': list(maquinas_com_retirada_pendente),
         'maquinas_com_devolucao_pendente': list(maquinas_com_devolucao_pendente),
+        'search_query': query or "", # Passa o termo pesquisado de volta para o template
     }
     return render(request, 'core/home.html', context)
 
 @login_required
 def solicitar_retirada(request, maquina_id):
-    """
-    Gera um código para retirada e passa o ID do código para o template.
-    """
     maquina = get_object_or_404(Maquina, id=maquina_id, status='disponivel')
     CodigoConfirmacao.objects.filter(usuario_solicitante=request.user, maquina=maquina, tipo_operacao='retirada').delete()
-    codigo = CodigoConfirmacao.objects.create(
-        usuario_solicitante=request.user,
-        maquina=maquina,
-        tipo_operacao='retirada'
-    )
-    context = {
-        'maquina': maquina,
-        'codigo': codigo.codigo,
-        'codigo_id': codigo.id,
-        'expira_em': codigo.expira_em,
-        'tipo_operacao': 'Retirada'
-    }
+    codigo = CodigoConfirmacao.objects.create(usuario_solicitante=request.user,maquina=maquina,tipo_operacao='retirada')
+    context = {'maquina': maquina,'codigo': codigo.codigo,'codigo_id': codigo.id,'expira_em': codigo.expira_em,'tipo_operacao': 'Retirada'}
     return render(request, 'core/exibir_codigo.html', context)
 
 @login_required
 def solicitar_devolucao(request, maquina_id):
-    """
-    Gera um código para devolução e passa o ID do código para o template.
-    """
     maquina = get_object_or_404(Maquina, id=maquina_id, posse_atual=request.user)
     CodigoConfirmacao.objects.filter(usuario_solicitante=request.user, maquina=maquina, tipo_operacao='devolucao').delete()
-    codigo = CodigoConfirmacao.objects.create(
-        usuario_solicitante=request.user,
-        maquina=maquina,
-        tipo_operacao='devolucao'
-    )
-    context = {
-        'maquina': maquina,
-        'codigo': codigo.codigo,
-        'codigo_id': codigo.id,
-        'expira_em': codigo.expira_em,
-        'tipo_operacao': 'Devolução'
-    }
+    codigo = CodigoConfirmacao.objects.create(usuario_solicitante=request.user,maquina=maquina,tipo_operacao='devolucao')
+    context = {'maquina': maquina,'codigo': codigo.codigo,'codigo_id': codigo.id,'expira_em': codigo.expira_em,'tipo_operacao': 'Devolução'}
     return render(request, 'core/exibir_codigo.html', context)
 
 @login_required
 def confirmar_operacao(request, maquina_id, tipo_operacao):
-    """
-    Processa a confirmação da operação, lidando com requisições normais e AJAX.
-    """
     maquina = get_object_or_404(Maquina, id=maquina_id)
     is_ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest'
-
     if request.method == 'POST':
         form = CodigoConfirmacaoForm(request.POST)
         if form.is_valid():
@@ -109,7 +86,7 @@ def confirmar_operacao(request, maquina_id, tipo_operacao):
                         maquina.save()
                         Operacao.objects.create(maquina=maquina, usuario_principal=codigo_obj.usuario_solicitante, usuario_confirmacao=request.user, tipo_operacao='retirada')
                         success_message = f'Máquina "{maquina.nome}" retirada com sucesso!'
-                    else: # devolução
+                    else:
                         maquina.status = 'disponivel'
                         maquina.posse_atual = None
                         maquina.save()
@@ -136,9 +113,6 @@ def confirmar_operacao(request, maquina_id, tipo_operacao):
 
 @login_required
 def verificar_status_operacao(request, codigo_id):
-    """
-    Verifica o status de um código para a funcionalidade de polling.
-    """
     try:
         codigo = CodigoConfirmacao.objects.get(id=codigo_id, usuario_solicitante=request.user)
         if codigo.is_valid():
@@ -148,7 +122,6 @@ def verificar_status_operacao(request, codigo_id):
     except CodigoConfirmacao.DoesNotExist:
         return JsonResponse({'status': 'confirmado'})
 
-# --- Views do Administrador (CRUD de Máquinas) ---
 @admin_required
 def listar_maquinas(request):
     maquinas = Maquina.objects.all()

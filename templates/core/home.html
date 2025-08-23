@@ -23,7 +23,13 @@
             {% endif %}
 
             <div class="card-body d-flex flex-column">
-                <h5 class="card-title">{{ maquina.nome }}</h5>
+                <div class="d-flex justify-content-between">
+                    <h5 class="card-title">{{ maquina.nome }}</h5>
+                    <!-- EXIBIÇÃO DO PATRIMÔNIO -->
+                    {% if maquina.patrimonio %}
+                    <span class="badge bg-light text-dark align-self-start">#{{ maquina.patrimonio }}</span>
+                    {% endif %}
+                </div>
                 <p class="card-text text-muted">{{ maquina.tipo_modelo }}</p>
 
                 <!-- Status da Máquina -->
@@ -47,14 +53,12 @@
                 </div>
                 {% endif %}
 
-                <!-- Botões de Ação (Lógica Melhorada) -->
+                <!-- Botões de Ação -->
                 <div class="mt-auto d-grid gap-2">
                     {% if maquina.status == 'disponivel' %}
-                    <!-- Ações para máquinas disponíveis -->
                     <a href="{% url 'solicitar_retirada' maquina.id %}" class="btn btn-primary">
                         <i class="bi bi-arrow-down-square"></i> Solicitar Retirada
                     </a>
-
                     {% if maquina.id in maquinas_com_retirada_pendente %}
                     <a href="{% url 'confirmar_operacao' maquina.id 'retirada' %}" class="btn btn-outline-secondary">
                         <i class="bi bi-check2-square"></i> Confirmar Retirada
@@ -64,19 +68,14 @@
                         <i class="bi bi-hourglass-split"></i> Aguardando Solicitação
                     </button>
                     {% endif %}
-
                     {% else %}
-                    <!-- Ações para máquinas em uso -->
                     {% if maquina.posse_atual == user %}
-                    <!-- Se a máquina está comigo -->
                     <a href="{% url 'solicitar_devolucao' maquina.id %}" class="btn btn-info">
                         <i class="bi bi-arrow-up-square"></i> Solicitar Devolução
                     </a>
                     {% else %}
-                    <!-- Se a máquina está com outra pessoa -->
                     <button class="btn btn-secondary" disabled>Em uso</button>
                     {% endif %}
-
                     {% if maquina.id in maquinas_com_devolucao_pendente %}
                     <a href="{% url 'confirmar_operacao' maquina.id 'devolucao' %}" class="btn btn-outline-secondary">
                         <i class="bi bi-check2-square"></i> Confirmar Devolução
