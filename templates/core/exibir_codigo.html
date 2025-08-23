@@ -20,7 +20,8 @@
                     </div>
 
                     <p class="text-danger">
-                        Este código expira em <strong id="countdown">30</strong> segundos.
+                        <!-- ALTERAÇÃO -->
+                        Este código expira em <strong id="countdown">90</strong> segundos.
                     </p>
 
                     <hr>
@@ -42,7 +43,8 @@
         const countdownElement = document.getElementById('countdown');
         const codigoContainer = document.getElementById('codigo-container');
         const statusWrapper = document.getElementById('status-wrapper');
-        let timeLeft = 30;
+        // --- ALTERAÇÃO ---
+        let timeLeft = 90; // Atualiza o tempo inicial do contador
         let pollingInterval;
 
         // Função do contador regressivo
