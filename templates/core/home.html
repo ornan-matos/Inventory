@@ -1,0 +1,102 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Página Inicial - Gestão de Máquinas{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h2">Inventário de Máquinas</h1>
+    <div class="text-end">
+        <span class="badge bg-success p-2 fs-6">
+            {{ maquinas_disponiveis }} Máquinas Disponíveis
+        </span>
+    </div>
+</div>
+
+<div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+    {% for maquina in maquinas %}
+    <div class="col">
+        <div class="card h-100 shadow-sm">
+            {% if maquina.foto %}
+            <img src="{{ maquina.foto.url }}" class="card-img-top" alt="Foto de {{ maquina.nome }}">
+            {% else %}
+            <img src="https://placehold.co/600x400/e9ecef/495057?text=Sem+Foto" class="card-img-top" alt="Sem foto">
+            {% endif %}
+
+            <div class="card-body d-flex flex-column">
+                <h5 class="card-title">{{ maquina.nome }}</h5>
+                <p class="card-text text-muted">{{ maquina.tipo_modelo }}</p>
+
+                <!-- Status da Máquina -->
+                {% if maquina.status == 'disponivel' %}
+                <p class="mb-2">
+                        <span class="badge bg-success-subtle text-success-emphasis rounded-pill status-badge">
+                            <i class="bi bi-check-circle-fill"></i> Disponível
+                        </span>
+                </p>
+                {% else %}
+                <p class="mb-2">
+                        <span class="badge bg-warning-subtle text-warning-emphasis rounded-pill status-badge">
+                            <i class="bi bi-person-fill-gear"></i> Em posse temporária
+                        </span>
+                </p>
+                <div class="d-flex align-items-center small mb-3">
+                    {% if maquina.posse_atual.foto %}
+                    <img src="{{ maquina.posse_atual.foto.url }}" class="rounded-circle me-2" width="30" height="30" alt="Foto de {{ maquina.posse_atual.get_full_name }}">
+                    {% endif %}
+                    <span>Com: <strong>{{ maquina.posse_atual.get_full_name|default:maquina.posse_atual.username }}</strong></span>
+                </div>
+                {% endif %}
+
+                <!-- Botões de Ação (Lógica Melhorada) -->
+                <div class="mt-auto d-grid gap-2">
+                    {% if maquina.status == 'disponivel' %}
+                    <!-- Ações para máquinas disponíveis -->
+                    <a href="{% url 'solicitar_retirada' maquina.id %}" class="btn btn-primary">
+                        <i class="bi bi-arrow-down-square"></i> Solicitar Retirada
+                    </a>
+
+                    {% if maquina.id in maquinas_com_retirada_pendente %}
+                    <a href="{% url 'confirmar_operacao' maquina.id 'retirada' %}" class="btn btn-outline-secondary">
+                        <i class="bi bi-check2-square"></i> Confirmar Retirada
+                    </a>
+                    {% else %}
+                    <button class="btn btn-outline-secondary" disabled>
+                        <i class="bi bi-hourglass-split"></i> Aguardando Solicitação
+                    </button>
+                    {% endif %}
+
+                    {% else %}
+                    <!-- Ações para máquinas em uso -->
+                    {% if maquina.posse_atual == user %}
+                    <!-- Se a máquina está comigo -->
+                    <a href="{% url 'solicitar_devolucao' maquina.id %}" class="btn btn-info">
+                        <i class="bi bi-arrow-up-square"></i> Solicitar Devolução
+                    </a>
+                    {% else %}
+                    <!-- Se a máquina está com outra pessoa -->
+                    <button class="btn btn-secondary" disabled>Em uso</button>
+                    {% endif %}
+
+                    {% if maquina.id in maquinas_com_devolucao_pendente %}
+                    <a href="{% url 'confirmar_operacao' maquina.id 'devolucao' %}" class="btn btn-outline-secondary">
+                        <i class="bi bi-check2-square"></i> Confirmar Devolução
+                    </a>
+                    {% else %}
+                    <button class="btn btn-outline-secondary" disabled>
+                        <i class="bi bi-hourglass-split"></i> Aguardando Solicitação
+                    </button>
+                    {% endif %}
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-12">
+        <div class="alert alert-info text-center">
+            Nenhuma máquina cadastrada no sistema ainda.
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}
