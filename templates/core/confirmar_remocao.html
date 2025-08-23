@@ -1,0 +1,38 @@
+
+{% extends 'core/base.html' %}
+
+{% block title %}Confirmar Remoção{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <div class="card border-danger shadow">
+            <div class="card-header bg-danger text-white">
+                <h4 class="mb-0"><i class="bi bi-exclamation-triangle-fill"></i> Atenção!</h4>
+            </div>
+            <div class="card-body p-4">
+                <p class="card-text fs-5">
+                    Você tem certeza que deseja remover permanentemente a máquina:
+                </p>
+
+                <div class="alert alert-warning text-center">
+                    <h3 class="alert-heading">{{ maquina.nome }}</h3>
+                    <p class="mb-0">{{ maquina.tipo_modelo }}</p>
+                </div>
+
+                <p class="text-danger">
+                    <strong>Esta ação não pode ser desfeita.</strong> Todo o histórico de operações associado a esta máquina também será afetado.
+                </p>
+
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="d-flex justify-content-end gap-2 mt-4">
+                        <a href="{% url 'listar_maquinas' %}" class="btn btn-secondary">Cancelar</a>
+                        <button type="submit" class="btn btn-danger">Sim, desejo remover</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

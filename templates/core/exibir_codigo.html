@@ -1,0 +1,102 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Código de Confirmação{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <!-- Wrapper para facilitar a substituição do conteúdo -->
+        <div id="status-wrapper">
+            <div class="card text-center shadow">
+                <div class="card-header">
+                    <h4 class="mb-0">Confirmação de {{ tipo_operacao }}</h4>
+                </div>
+                <div class="card-body p-4">
+                    <p class="card-text">Apresente o código abaixo para outro colaborador confirmar a operação para a máquina:</p>
+                    <h5 class="mb-3"><strong>{{ maquina.nome }}</strong></h5>
+
+                    <div class="codigo-display my-4" id="codigo-container">
+                        {{ codigo }}
+                    </div>
+
+                    <p class="text-danger">
+                        Este código expira em <strong id="countdown">30</strong> segundos.
+                    </p>
+
+                    <hr>
+
+                    <p class="mt-4 small text-muted">Aguardando confirmação do outro colaborador...</p>
+                </div>
+                <div class="card-footer text-muted">
+                    <a href="{% url 'home' %}" class="btn btn-secondary">Voltar para o Início</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const countdownElement = document.getElementById('countdown');
+        const codigoContainer = document.getElementById('codigo-container');
+        const statusWrapper = document.getElementById('status-wrapper');
+        let timeLeft = 30;
+        let pollingInterval;
+
+        // Função do contador regressivo
+        const timer = setInterval(() => {
+            timeLeft--;
+            if (countdownElement) {
+                countdownElement.textContent = timeLeft;
+            }
+
+            if (timeLeft <= 0) {
+                clearInterval(timer);
+            }
+        }, 1000);
+
+        // Função que verifica o status no servidor
+        function checkStatus() {
+            const url = `/verificar-status/{{ codigo_id }}/`;
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'confirmado') {
+                        clearInterval(pollingInterval); // Para de verificar
+                        clearInterval(timer);
+                        statusWrapper.innerHTML = `
+                        <div class="card text-center shadow border-success">
+                            <div class="card-body p-5">
+                                <i class="bi bi-check-circle-fill text-success" style="font-size: 4rem;"></i>
+                                <h3 class="mt-3">Operação Confirmada!</h3>
+                                <p class="lead">A {{ tipo_operacao|lower }} da máquina foi confirmada com sucesso por outro colaborador.</p>
+                                <a href="{% url 'home' %}" class="btn btn-primary mt-3">Voltar para o Início</a>
+                            </div>
+                        </div>
+                    `;
+                    } else if (data.status === 'expirado') {
+                        clearInterval(pollingInterval); // Para de verificar
+                        clearInterval(timer);
+                        if (countdownElement) {
+                            countdownElement.parentElement.innerHTML = '<strong>Código expirado!</strong> Por favor, solicite um novo.';
+                        }
+                        if (codigoContainer) {
+                            codigoContainer.style.textDecoration = 'line-through';
+                            codigoContainer.style.opacity = '0.5';
+                        }
+                    }
+                    // Se o status for 'pendente', não faz nada e espera a próxima verificação
+                })
+                .catch(error => {
+                    console.error('Erro no polling:', error);
+                    clearInterval(pollingInterval); // Para de verificar em caso de erro
+                });
+        }
+
+        // Inicia a verificação a cada 3 segundos
+        pollingInterval = setInterval(checkStatus, 3000);
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,18 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block extrahead %}
+    {# Adiciona o Favicon na aba do navegador #}
+    <link rel="icon" type="image/x-icon" href="{% static 'core/img/favicon.ico' %}">
+{% endblock %}
+
+
+{% block branding %}
+    {# Adiciona o Logo ao lado do título do painel #}
+    <div id="site-name">
+        <a href="{% url 'admin:index' %}">
+            <img src="{% static 'core/img/logo.png' %}" height="40" alt="Logo da Empresa" style="margin-right: 10px; vertical-align: middle;">
+            <span style="vertical-align: middle;">{{ site_header|default:_('Django administration') }}</span>
+        </a>
+    </div>
+{% endblock %}
