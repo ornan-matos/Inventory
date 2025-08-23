@@ -30,8 +30,6 @@ class Maquina(models.Model):
     foto = models.ImageField(upload_to='fotos_maquinas/', null=True, blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='disponivel')
     posse_atual = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, blank=True, related_name='maquinas_em_posse')
-
-    # --- NOVOS CAMPOS ADICIONADOS ---
     patrimonio = models.CharField(max_length=50, blank=True, null=True, verbose_name="Patrimônio")
     numero_serie = models.CharField(max_length=100, blank=True, null=True, verbose_name="Número de Série")
     numero_vinculacao = models.CharField(max_length=100, blank=True, null=True, verbose_name="Número de Vinculação")
@@ -77,7 +75,7 @@ class CodigoConfirmacao(models.Model):
         if not self.codigo:
             self.codigo = ''.join(random.choices(string.digits, k=6))
         if not self.id:
-            self.expira_em = timezone.now() + timedelta(seconds=30)
+            self.expira_em = timezone.now() + timedelta(seconds=90)
         super().save(*args, **kwargs)
 
     def is_valid(self):
