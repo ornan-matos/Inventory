@@ -16,7 +16,6 @@
         .status-badge { font-size: 0.9em; }
         .codigo-display { font-size: 3rem; font-weight: bold; letter-spacing: 0.5rem; background-color: #e9ecef; padding: 20px; border-radius: 10px; }
 
-        /* --- ESTILOS PARA A PESQUISA EXPANSÍVEL --- */
         #search-input {
             width: 0;
             padding-left: 0;
@@ -35,7 +34,6 @@
         #search-input:focus {
             box-shadow: none;
         }
-        /* --- ALTERAÇÃO --- */
         #search-toggle {
             border-color: transparent; /* Borda transparente por padrão */
         }
@@ -56,7 +54,6 @@
             <span class="navbar-toggler-icon"></span>
         </button>
         <div class="collapse navbar-collapse" id="navbarNav">
-            <!-- Links alinhados à esquerda -->
             <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                 {% if user.is_authenticated %}
                 <li class="nav-item"><a class="nav-link" href="{% url 'home' %}">Início</a></li>
@@ -65,9 +62,9 @@
                 {% endif %}
                 {% endif %}
             </ul>
-            <!-- Links alinhados à direita -->
             <ul class="navbar-nav ms-auto align-items-center">
-                <!-- BARRA DE PESQUISA EXPANSÍVEL -->
+            <!-- BARRA DE PESQUISA (MOMENTANEAMENTE DESATIVADA) -->
+                <!--
                 <li class="nav-item">
                     <form class="d-flex" role="search" action="{% url 'home' %}" method="get" id="search-form">
                         <div class="input-group">
@@ -78,6 +75,8 @@
                         </div>
                     </form>
                 </li>
+                -->
+
 
                 {% if user.is_authenticated %}
                 {% if user.user_type == 'admin' %}

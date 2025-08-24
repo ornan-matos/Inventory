@@ -19,15 +19,17 @@ def admin_required(view_func):
 @login_required
 def home(request):
 
-    query = request.GET.get('q')
-    maquinas = Maquina.objects.all().order_by('nome')
-    if query:
-        maquinas = maquinas.filter(
-            Q(nome__icontains=query) |
-            Q(tipo_modelo__icontains=query) |
-            Q(patrimonio__icontains=query) |
-            Q(numero_serie__icontains=query)
-        )
+# --- LÓGICA DA PESQUISA (MOMENTANEAMENTE DESATIVADA) ---
+#    query = request.GET.get('q')
+#    maquinas = Maquina.objects.all().order_by('nome')
+#    if query:
+#        maquinas = maquinas.filter(
+#            Q(nome__icontains=query) |
+#            Q(tipo_modelo__icontains=query) |
+#            Q(patrimonio__icontains=query) |
+#            Q(numero_serie__icontains=query)
+#        )
+# --- FIM DA LÓGICA DA PESQUISA ---
 
     maquinas_disponiveis = Maquina.objects.filter(status='disponivel').count()
     maquinas_com_retirada_pendente = CodigoConfirmacao.objects.filter(
