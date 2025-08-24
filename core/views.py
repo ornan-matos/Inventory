@@ -18,20 +18,18 @@ def admin_required(view_func):
 
 @login_required
 def home(request):
+    maquinas = Maquina.objects.all().order_by('nome')
 
-maquinas = Maquina.objects.all().order_by('nome')
-
-# --- LÓGICA DA PESQUISA (MOMENTANEAMENTE DESATIVADA) ---
-#    query = request.GET.get('q')
-#
-#    if query:
-#        maquinas = maquinas.filter(
-#            Q(nome__icontains=query) |
-#            Q(tipo_modelo__icontains=query) |
-#            Q(patrimonio__icontains=query) |
-#            Q(numero_serie__icontains=query)
-#        )
-# --- FIM DA LÓGICA DA PESQUISA ---
+    # --- LÓGICA DA PESQUISA (MOMENTANEAMENTE DESATIVADA) ---
+    # query = request.GET.get('q')
+    # if query:
+    #     maquinas = maquinas.filter(
+    #         Q(nome__icontains=query) |
+    #         Q(tipo_modelo__icontains=query) |
+    #         Q(patrimonio__icontains=query) |
+    #         Q(numero_serie__icontains=query)
+    #     )
+    # --- FIM DA LÓGICA DA PESQUISA ---
 
     maquinas_disponiveis = Maquina.objects.filter(status='disponivel').count()
     maquinas_com_retirada_pendente = CodigoConfirmacao.objects.filter(
@@ -48,7 +46,7 @@ maquinas = Maquina.objects.all().order_by('nome')
         'maquinas_disponiveis': maquinas_disponiveis,
         'maquinas_com_retirada_pendente': list(maquinas_com_retirada_pendente),
         'maquinas_com_devolucao_pendente': list(maquinas_com_devolucao_pendente),
-        'search_query': query or "", # Passa o termo pesquisado de volta para o template
+        # 'search_query': query or "", # Linha comentada para evitar erro
     }
     return render(request, 'core/home.html', context)
 
