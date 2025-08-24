@@ -5,6 +5,21 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = "django-insecure-your-secret-key-here"
 DEBUG = True
 ALLOWED_HOSTS = ["awspos.duckdns.org", "localhost", "127.0.0.1"]
+
+# HOSTS DINÂMICOS PARA AWS
+try:
+    with urllib.request.urlopen(
+        "http://169.254.169.254/latest/meta-data/public-ipv4", timeout=2
+    ) as response:
+        ec2_public_ip = response.read().decode("utf-8")
+        ALLOWED_HOSTS.append(ec2_public_ip)
+        print(
+            f"IP público da instância EC2 adicionado aos ALLOWED_HOSTS: {ec2_public_ip}"
+        )
+except Exception:
+    print("Não foi possível obter o IP da instância EC2. Ignorando.")
+# ----------------------------
+
 CSRF_TRUSTED_ORIGINS = ["https://awspos.duckdns.org"]
 
 INSTALLED_APPS = [
