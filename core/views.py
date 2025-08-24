@@ -4,11 +4,15 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
 from django.utils import timezone
+from datetime import timedelta
 from django.db.models import Q
 from .models import Maquina, Operacao, CodigoConfirmacao, CustomUser
 from .forms import MaquinaForm, CodigoConfirmacaoForm
 
 def admin_required(view_func):
+    """
+    Decorator que verifica se o usuário logado é um administrador.
+    """
     decorated_view = user_passes_test(
         lambda u: u.is_authenticated and u.user_type == 'admin',
         login_url='login',
@@ -18,27 +22,27 @@ def admin_required(view_func):
 
 @login_required
 def home(request):
+    """
+    Página inicial que lista as máquinas e verifica quais têm operações pendentes.
+    """
     maquinas = Maquina.objects.all().order_by('nome')
-
-    # --- LÓGICA DA PESQUISA (MOMENTANEAMENTE DESATIVADA) ---
-    # query = request.GET.get('q')
-    # if query:
-    #     maquinas = maquinas.filter(
-    #         Q(nome__icontains=query) |
-    #         Q(tipo_modelo__icontains=query) |
-    #         Q(patrimonio__icontains=query) |
-    #         Q(numero_serie__icontains=query)
-    #     )
-    # --- FIM DA LÓGICA DA PESQUISA ---
-
     maquinas_disponiveis = Maquina.objects.filter(status='disponivel').count()
+
+    # Define o ponto de corte para códigos expirados
+    ninety_seconds_ago = timezone.now() - timedelta(seconds=90)
+
+    # Busca IDs de máquinas com códigos de retirada pendentes e válidos
     maquinas_com_retirada_pendente = CodigoConfirmacao.objects.filter(
         tipo_operacao='retirada',
-        expira_em__gt=timezone.now()
+        status='pendente',
+        criado_em__gt=ninety_seconds_ago
     ).values_list('maquina_id', flat=True)
+
+    # Busca IDs de máquinas com códigos de devolução pendentes e válidos
     maquinas_com_devolucao_pendente = CodigoConfirmacao.objects.filter(
         tipo_operacao='devolucao',
-        expira_em__gt=timezone.now()
+        status='pendente',
+        criado_em__gt=ninety_seconds_ago
     ).values_list('maquina_id', flat=True)
 
     context = {
@@ -46,24 +50,39 @@ def home(request):
         'maquinas_disponiveis': maquinas_disponiveis,
         'maquinas_com_retirada_pendente': list(maquinas_com_retirada_pendente),
         'maquinas_com_devolucao_pendente': list(maquinas_com_devolucao_pendente),
-        # 'search_query': query or "", # Linha comentada para evitar erro
     }
     return render(request, 'core/home.html', context)
 
 @login_required
 def solicitar_retirada(request, maquina_id):
     maquina = get_object_or_404(Maquina, id=maquina_id, status='disponivel')
-    CodigoConfirmacao.objects.filter(usuario_solicitante=request.user, maquina=maquina, tipo_operacao='retirada').delete()
-    codigo = CodigoConfirmacao.objects.create(usuario_solicitante=request.user,maquina=maquina,tipo_operacao='retirada')
-    context = {'maquina': maquina,'codigo': codigo.codigo,'codigo_id': codigo.id,'expira_em': codigo.expira_em,'tipo_operacao': 'Retirada'}
+    codigo = CodigoConfirmacao.objects.create(
+        usuario_solicitante=request.user,
+        maquina=maquina,
+        tipo_operacao='retirada'
+    )
+    context = {
+        'maquina': maquina,
+        'codigo': codigo.codigo,
+        'codigo_id': codigo.id,
+        'tipo_operacao': 'Retirada'
+    }
     return render(request, 'core/exibir_codigo.html', context)
 
 @login_required
 def solicitar_devolucao(request, maquina_id):
     maquina = get_object_or_404(Maquina, id=maquina_id, posse_atual=request.user)
-    CodigoConfirmacao.objects.filter(usuario_solicitante=request.user, maquina=maquina, tipo_operacao='devolucao').delete()
-    codigo = CodigoConfirmacao.objects.create(usuario_solicitante=request.user,maquina=maquina,tipo_operacao='devolucao')
-    context = {'maquina': maquina,'codigo': codigo.codigo,'codigo_id': codigo.id,'expira_em': codigo.expira_em,'tipo_operacao': 'Devolução'}
+    codigo = CodigoConfirmacao.objects.create(
+        usuario_solicitante=request.user,
+        maquina=maquina,
+        tipo_operacao='devolucao'
+    )
+    context = {
+        'maquina': maquina,
+        'codigo': codigo.codigo,
+        'codigo_id': codigo.id,
+        'tipo_operacao': 'Devolução'
+    }
     return render(request, 'core/exibir_codigo.html', context)
 
 @login_required
@@ -81,26 +100,32 @@ def confirmar_operacao(request, maquina_id, tipo_operacao):
                     if is_ajax: return JsonResponse({'status': 'error', 'message': message}, status=403)
                     messages.error(request, message)
                     return redirect('home')
+
                 if codigo_obj.is_valid():
+                    codigo_obj.status = 'confirmado'
+                    codigo_obj.save()
+
                     if tipo_operacao == 'retirada':
                         maquina.status = 'em_uso'
                         maquina.posse_atual = codigo_obj.usuario_solicitante
                         maquina.save()
                         Operacao.objects.create(maquina=maquina, usuario_principal=codigo_obj.usuario_solicitante, usuario_confirmacao=request.user, tipo_operacao='retirada')
                         success_message = f'Máquina "{maquina.nome}" retirada com sucesso!'
-                    else:
+                    else: # devolução
                         maquina.status = 'disponivel'
                         maquina.posse_atual = None
                         maquina.save()
                         Operacao.objects.create(maquina=maquina, usuario_principal=codigo_obj.usuario_solicitante, usuario_confirmacao=request.user, tipo_operacao='devolucao')
                         success_message = f'Máquina "{maquina.nome}" devolvida com sucesso!'
-                    codigo_obj.delete()
+
                     if is_ajax: return JsonResponse({'status': 'success', 'message': success_message})
                     messages.success(request, success_message)
                     return redirect('home')
                 else:
-                    codigo_obj.delete()
-                    message = 'Código expirado. Por favor, solicite um novo.'
+                    if codigo_obj.status == 'pendente':
+                        codigo_obj.status = 'expirado'
+                        codigo_obj.save()
+                    message = 'Código expirado ou já utilizado. Por favor, solicite um novo.'
                     if is_ajax: return JsonResponse({'status': 'error', 'message': message}, status=400)
                     messages.error(request, message)
             except CodigoConfirmacao.DoesNotExist:
@@ -117,12 +142,17 @@ def confirmar_operacao(request, maquina_id, tipo_operacao):
 def verificar_status_operacao(request, codigo_id):
     try:
         codigo = CodigoConfirmacao.objects.get(id=codigo_id, usuario_solicitante=request.user)
-        if codigo.is_valid():
-            return JsonResponse({'status': 'pendente'})
-        else:
+        if codigo.status == 'confirmado':
+            return JsonResponse({'status': 'confirmado'})
+
+        if not codigo.is_valid() and codigo.status == 'pendente':
+            codigo.status = 'expirado'
+            codigo.save()
             return JsonResponse({'status': 'expirado'})
+
+        return JsonResponse({'status': codigo.status})
     except CodigoConfirmacao.DoesNotExist:
-        return JsonResponse({'status': 'confirmado'})
+        return JsonResponse({'status': 'expirado'})
 
 @admin_required
 def listar_maquinas(request):
