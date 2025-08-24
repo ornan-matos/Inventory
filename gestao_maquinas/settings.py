@@ -1,15 +1,17 @@
 import os
 from pathlib import Path
 
+import urllib.request
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = "django-insecure-your-secret-key-here"
-DEBUG = True
+DEBUG = False
 ALLOWED_HOSTS = ["awspos.duckdns.org", "localhost", "127.0.0.1"]
 
 # HOSTS DINÂMICOS PARA AWS
 try:
     with urllib.request.urlopen(
-        "http://169.254.169.254/latest/meta-data/public-ipv4", timeout=2
+            "http://169.254.169.254/latest/meta-data/public-ipv4", timeout=2
     ) as response:
         ec2_public_ip = response.read().decode("utf-8")
         ALLOWED_HOSTS.append(ec2_public_ip)
@@ -35,6 +37,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    'django.middleware.locale.LocaleMiddleware', # Adicionado para traduções
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
@@ -88,6 +91,10 @@ LANGUAGE_CODE = "pt-br"
 TIME_ZONE = "America/Sao_Paulo"
 USE_I18N = True
 USE_TZ = True
+
+LOCALE_PATHS = [
+    os.path.join(BASE_DIR, 'core/locale'),
+]
 
 STATIC_URL = "static/"
 STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
