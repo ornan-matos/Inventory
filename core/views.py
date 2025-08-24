@@ -19,9 +19,11 @@ def admin_required(view_func):
 @login_required
 def home(request):
 
+maquinas = Maquina.objects.all().order_by('nome')
+
 # --- LÓGICA DA PESQUISA (MOMENTANEAMENTE DESATIVADA) ---
 #    query = request.GET.get('q')
-#    maquinas = Maquina.objects.all().order_by('nome')
+#
 #    if query:
 #        maquinas = maquinas.filter(
 #            Q(nome__icontains=query) |
