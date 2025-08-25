@@ -29,6 +29,11 @@ class CustomUserAdmin(UserAdmin):
         (_("Informações Adicionais"), {'fields': ('user_type', 'foto')}),
     )
 
+    change_password_help_text = _(
+        "Senhas não são armazenadas, então não é possível ver a senha "
+        "deste usuário. Você pode alterá-la usando <a href=\"../password/\">este link</a>."
+    )
+
 @admin.register(Maquina)
 class MaquinaAdmin(admin.ModelAdmin):
     list_display = ('nome', 'tipo_modelo', 'status', 'posse_atual')
@@ -40,8 +45,6 @@ def exportar_para_csv(modeladmin, request, queryset):
     response = HttpResponse(content_type='text/csv')
     response['Content-Disposition'] = 'attachment; filename="historico_operacoes_detalhado.csv"'
     writer = csv.writer(response)
-    # --- ALTERAÇÃO ---
-    # Adiciona os novos campos ao cabeçalho do CSV
     writer.writerow([
         'Data', 'Horário', 'Operação', 'Usuário Principal', 'Usuário Confirmação',
         'Máquina', 'Patrimônio', 'Nº de Série', 'Nº de Vinculação'
