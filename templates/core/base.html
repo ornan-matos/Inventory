@@ -63,7 +63,7 @@
                 {% endif %}
             </ul>
             <ul class="navbar-nav ms-auto align-items-center">
-            <!-- BARRA DE PESQUISA (MOMENTANEAMENTE DESATIVADA) -->
+                <!-- BARRA DE PESQUISA (MOMENTANEAMENTE DESATIVADA) -->
                 <!--
                 <li class="nav-item">
                     <form class="d-flex" role="search" action="{% url 'home' %}" method="get" id="search-form">
@@ -79,9 +79,8 @@
 
 
                 {% if user.is_authenticated %}
-                {% if user.user_type == 'admin' %}
-                <li class="nav-item"><a class="nav-link" href="{% url 'listar_maquinas' %}">Gerenciar Máquinas</a></li>
-                {% endif %}
+                <!-- --- ALTERAÇÃO --- -->
+                <!-- O link 'Gerenciar Máquinas' foi removido daqui -->
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                         <i class="bi bi-person-circle"></i> {{ user.get_full_name|default:user.username }}
@@ -141,29 +140,33 @@
         const searchInput = document.getElementById('search-input');
         const searchForm = document.getElementById('search-form');
 
-        searchToggle.addEventListener('click', function(e) {
-            // Se o campo de busca não está expandido, expande
-            if (!searchInput.classList.contains('expanded')) {
-                e.preventDefault(); // Impede o envio do formulário
-                searchInput.classList.add('expanded');
-                searchInput.focus(); // Coloca o cursor dentro do campo
-            } else {
-                // Se já está expandido e tem texto, envia o formulário
-                if (searchInput.value.trim() !== '') {
-                    searchForm.submit();
+        if (searchToggle) {
+            searchToggle.addEventListener('click', function(e) {
+                // Se o campo de busca não está expandido, expande
+                if (!searchInput.classList.contains('expanded')) {
+                    e.preventDefault(); // Impede o envio do formulário
+                    searchInput.classList.add('expanded');
+                    searchInput.focus(); // Coloca o cursor dentro do campo
                 } else {
-                    // Se está expandido mas vazio, apenas o recolhe
-                    searchInput.classList.remove('expanded');
+                    // Se já está expandido e tem texto, envia o formulário
+                    if (searchInput.value.trim() !== '') {
+                        searchForm.submit();
+                    } else {
+                        // Se está expandido mas vazio, apenas o recolhe
+                        searchInput.classList.remove('expanded');
+                    }
                 }
-            }
-        });
+            });
+        }
 
-        // Recolhe o campo de busca se o usuário clicar fora dele e estiver vazio
-        searchInput.addEventListener('blur', function() {
-            if (this.value.trim() === '') {
-                this.classList.remove('expanded');
-            }
-        });
+        if (searchInput) {
+            // Recolhe o campo de busca se o usuário clicar fora dele e estiver vazio
+            searchInput.addEventListener('blur', function() {
+                if (this.value.trim() === '') {
+                    this.classList.remove('expanded');
+                }
+            });
+        }
     });
 </script>
 {% endblock %}
