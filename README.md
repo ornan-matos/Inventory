@@ -2,9 +2,9 @@
 
 Este projeto é um sistema web desenvolvido em Python com o framework Django para gerenciar a posse temporária de máquinas de cartão de crédito (POS) dentro de uma equipe. A aplicação é containerizada com Podman para garantir um ambiente de execução consistente e portável.
 
-## Arquitetura Técnica
+## Arquitetura
 
-A aplicação segue uma arquitetura robusta e moderna, separando as responsabilidades entre backend, frontend, banco de dados e infraestrutura.
+A aplicação segue uma arquitetura moderna e escalável, estruturada de forma a manter a separação de responsabilidades entre backend, frontend, banco de dados e infraestrutura.
 
 ### Backend (Django)
 
@@ -68,8 +68,8 @@ Siga os passos abaixo para configurar e executar a aplicação em um novo ambien
 1.  **Clonar o Repositório**
     Obtenha o código-fonte do projeto.
     ```bash
-    git clone <url-do-repositorio>
-    cd <pasta-do-projeto>
+    git clone https://github.com/ornan-matos/Inventory.git
+    cd Inventory
     ```
 
 2.  **Criar o Volume de Dados**
