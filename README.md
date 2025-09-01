@@ -119,3 +119,15 @@ Siga os passos abaixo para configurar e executar a aplicação em um novo ambien
 
     Após o primeiro login com o superusuário, acesse o painel administrativo, edite seu usuário e defina o "User type" como "Administrador" para ter acesso a todas as funcionalidades.
 
+---
+## Scream Shots
+
+#### Dashboard
+![Versão Desktop](/img/Screen_Capture/captura1.png)
+
+#### Painel Super Admin
+![Versão Desktop](/img/Screen_Capture/captura2.png)
+
+#### Painel Histórico de Operações
+![Versão Desktop](/img/Screen_Capture/captura3.png)
+---
