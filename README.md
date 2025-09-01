@@ -123,11 +123,12 @@ Siga os passos abaixo para configurar e executar a aplicação em um novo ambien
 ## Scream Shots
 
 #### Dashboard
-![Versão Desktop](/img/Screen_Capture/captura1.png)
+![Dashboard](/img/Screen_Capture/captura1.png)
 
 #### Painel Super Admin
-![Versão Desktop](/img/Screen_Capture/captura2.png)
+![SuperAdmin](/img/Screen_Capture/captura2.png)
 
 #### Painel Histórico de Operações
-![Versão Desktop](/img/Screen_Capture/captura3.png)
+![Operações](/img/Screen_Capture/captura3.png)
+
 ---
