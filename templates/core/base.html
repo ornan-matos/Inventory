@@ -63,24 +63,7 @@
                 {% endif %}
             </ul>
             <ul class="navbar-nav ms-auto align-items-center">
-                <!-- BARRA DE PESQUISA (MOMENTANEAMENTE DESATIVADA) -->
-                <!--
-                <li class="nav-item">
-                    <form class="d-flex" role="search" action="{% url 'home' %}" method="get" id="search-form">
-                        <div class="input-group">
-                            <input id="search-input" class="form-control bg-dark text-white" type="search" name="q" placeholder="Pesquisar..." value="{{ search_query }}">
-                            <button id="search-toggle" class="btn btn-outline-secondary" type="button">
-                                <i class="bi bi-search"></i>
-                            </button>
-                        </div>
-                    </form>
-                </li>
-                -->
-
-
                 {% if user.is_authenticated %}
-                <!-- --- ALTERAÇÃO --- -->
-                <!-- O link 'Gerenciar Máquinas' foi removido daqui -->
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                         <i class="bi bi-person-circle"></i> {{ user.get_full_name|default:user.username }}
@@ -95,7 +78,11 @@
                     </ul>
                 </li>
                 {% else %}
+                <!-- --- ALTERAÇÃO --- -->
+                <!-- O link de Login só é exibido se o usuário não estiver na própria página de login -->
+                {% if request.resolver_match.url_name != 'login' %}
                 <li class="nav-item"><a class="nav-link" href="{% url 'login' %}">Login</a></li>
+                {% endif %}
                 {% endif %}
             </ul>
         </div>
@@ -134,41 +121,9 @@
             footerText.addEventListener('mouseover', function() { this.textContent = hoverText; });
             footerText.addEventListener('mouseout', function() { this.textContent = originalText; });
         }
-
-        // --- SCRIPT PARA A PESQUISA EXPANSÍVEL ---
-        const searchToggle = document.getElementById('search-toggle');
-        const searchInput = document.getElementById('search-input');
-        const searchForm = document.getElementById('search-form');
-
-        if (searchToggle) {
-            searchToggle.addEventListener('click', function(e) {
-                // Se o campo de busca não está expandido, expande
-                if (!searchInput.classList.contains('expanded')) {
-                    e.preventDefault(); // Impede o envio do formulário
-                    searchInput.classList.add('expanded');
-                    searchInput.focus(); // Coloca o cursor dentro do campo
-                } else {
-                    // Se já está expandido e tem texto, envia o formulário
-                    if (searchInput.value.trim() !== '') {
-                        searchForm.submit();
-                    } else {
-                        // Se está expandido mas vazio, apenas o recolhe
-                        searchInput.classList.remove('expanded');
-                    }
-                }
-            });
-        }
-
-        if (searchInput) {
-            // Recolhe o campo de busca se o usuário clicar fora dele e estiver vazio
-            searchInput.addEventListener('blur', function() {
-                if (this.value.trim() === '') {
-                    this.classList.remove('expanded');
-                }
-            });
-        }
     });
 </script>
 {% endblock %}
 </body>
 </html>
+

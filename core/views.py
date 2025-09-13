@@ -1,194 +1,195 @@
-import csv
-from django.http import HttpResponse, JsonResponse
+from django.http import JsonResponse
 from django.shortcuts import render, get_object_or_404, redirect
-from django.contrib.auth.decorators import login_required, user_passes_test
+from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.utils import timezone
-from datetime import timedelta
-from django.db.models import Q
-from .models import Maquina, Operacao, CodigoConfirmacao, CustomUser
-from .forms import MaquinaForm, CodigoConfirmacaoForm
-
-def admin_required(view_func):
-    """
-    Decorator que verifica se o usuário logado é um administrador.
-    """
-    decorated_view = user_passes_test(
-        lambda u: u.is_authenticated and u.user_type == 'admin',
-        login_url='login',
-        redirect_field_name=None
-    )(view_func)
-    return decorated_view
+from django.db.models import Q, Prefetch, Exists, OuterRef
+from .models import Maquina, Solicitacao
+from .utils import admin_required
 
 @login_required
 def home(request):
-    """
-    Página inicial que lista as máquinas e verifica quais têm operações pendentes.
-    """
-    maquinas = Maquina.objects.all().order_by('nome')
+    
+    return render(request, 'core/home.html')
+
+@login_required
+def dashboard_status(request):
+  
+    query = request.GET.get('q', '')
+
+  
+    pending_solicitations = Solicitacao.objects.filter(
+        maquina=OuterRef('pk'),
+        status__startswith='pendente'
+    )
+
+
+    maquinas = Maquina.objects.annotate(
+        tem_solicitacao=Exists(pending_solicitations)
+    ).select_related('posse_atual').prefetch_related(
+        Prefetch(
+            'solicitacoes',
+            queryset=Solicitacao.objects.filter(status__startswith='pendente').select_related('solicitante', 'posse_anterior'),
+            to_attr='solicitacoes_ativas'
+        )
+    )
+
+    if query:
+        maquinas = maquinas.filter(
+            Q(nome__icontains=query) |
+            Q(tipo_modelo__icontains=query) |
+            Q(patrimonio__icontains=query)
+        )
+
+    
+    maquinas = maquinas.order_by('-tem_solicitacao', 'nome')
+
+
+    maquinas_por_categoria = {}
+    for maquina in maquinas:
+        categoria = maquina.categoria or "Sem Categoria"
+        if categoria not in maquinas_por_categoria:
+            maquinas_por_categoria[categoria] = []
+
+        sol = maquina.solicitacoes_ativas[0] if hasattr(maquina, 'solicitacoes_ativas') and maquina.solicitacoes_ativas else None
+
+        solicitacao_data = None
+        if sol:
+            solicitacao_data = {
+                'id': sol.id,
+                'tipo': sol.get_tipo_display(),
+                'status': sol.status,
+                'solicitante': {
+                    'id': sol.solicitante.id,
+                    'nome': sol.solicitante.get_full_name() or sol.solicitante.username,
+                    'foto_url': sol.solicitante.foto.url if sol.solicitante.foto else None,
+                },
+                'posse_anterior': {
+                     'id': sol.posse_anterior.id,
+                     'nome': sol.posse_anterior.get_full_name() or sol.posse_anterior.username,
+                } if sol.posse_anterior else None,
+            }
+        
+        tipo_maquina_display = maquina.get_tipo_maquina_display() if maquina.tipo_maquina else 'Produção'
+
+        maquina_data = {
+            'id': maquina.id,
+            'nome': maquina.nome,
+            'tipo_modelo': maquina.tipo_modelo,
+            'foto_url': maquina.foto.url if maquina.foto else 'https://placehold.co/600x400/e9ecef/495057?text=Sem+Foto',
+            'status': maquina.status,
+            'status_display': maquina.get_status_display(),
+            'patrimonio': maquina.patrimonio,
+            'numero_serie': maquina.numero_serie,
+            'tipo_maquina': tipo_maquina_display,
+            'posse_atual': {
+                'id': maquina.posse_atual.id,
+                'nome': maquina.posse_atual.get_full_name() or maquina.posse_atual.username,
+                'foto_url': maquina.posse_atual.foto.url if maquina.posse_atual.foto else None,
+            } if maquina.posse_atual else None,
+            'solicitacao': solicitacao_data
+        }
+        maquinas_por_categoria[categoria].append(maquina_data)
+
+
     maquinas_disponiveis = Maquina.objects.filter(status='disponivel').count()
 
-    # Define o ponto de corte para códigos expirados
-    ninety_seconds_ago = timezone.now() - timedelta(seconds=90)
-
-    # Busca IDs de máquinas com códigos de retirada pendentes e válidos
-    maquinas_com_retirada_pendente = CodigoConfirmacao.objects.filter(
-        tipo_operacao='retirada',
-        status='pendente',
-        criado_em__gt=ninety_seconds_ago
-    ).values_list('maquina_id', flat=True)
-
-    # Busca IDs de máquinas com códigos de devolução pendentes e válidos
-    maquinas_com_devolucao_pendente = CodigoConfirmacao.objects.filter(
-        tipo_operacao='devolucao',
-        status='pendente',
-        criado_em__gt=ninety_seconds_ago
-    ).values_list('maquina_id', flat=True)
-
-    context = {
-        'maquinas': maquinas,
+    return JsonResponse({
+        'maquinas_por_categoria': maquinas_por_categoria,
         'maquinas_disponiveis': maquinas_disponiveis,
-        'maquinas_com_retirada_pendente': list(maquinas_com_retirada_pendente),
-        'maquinas_com_devolucao_pendente': list(maquinas_com_devolucao_pendente),
-    }
-    return render(request, 'core/home.html', context)
+    })
+
 
 @login_required
-def solicitar_retirada(request, maquina_id):
-    maquina = get_object_or_404(Maquina, id=maquina_id, status='disponivel')
-    codigo = CodigoConfirmacao.objects.create(
-        usuario_solicitante=request.user,
-        maquina=maquina,
-        tipo_operacao='retirada'
-    )
-    context = {
-        'maquina': maquina,
-        'codigo': codigo.codigo,
-        'codigo_id': codigo.id,
-        'tipo_operacao': 'Retirada'
-    }
-    return render(request, 'core/exibir_codigo.html', context)
-
-@login_required
-def solicitar_devolucao(request, maquina_id):
-    maquina = get_object_or_404(Maquina, id=maquina_id, posse_atual=request.user)
-    codigo = CodigoConfirmacao.objects.create(
-        usuario_solicitante=request.user,
-        maquina=maquina,
-        tipo_operacao='devolucao'
-    )
-    context = {
-        'maquina': maquina,
-        'codigo': codigo.codigo,
-        'codigo_id': codigo.id,
-        'tipo_operacao': 'Devolução'
-    }
-    return render(request, 'core/exibir_codigo.html', context)
-
-@login_required
-def confirmar_operacao(request, maquina_id, tipo_operacao):
+def solicitar_operacao(request, maquina_id, tipo_operacao):
     maquina = get_object_or_404(Maquina, id=maquina_id)
-    is_ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest'
-    if request.method == 'POST':
-        form = CodigoConfirmacaoForm(request.POST)
-        if form.is_valid():
-            codigo_digitado = form.cleaned_data['codigo']
-            try:
-                codigo_obj = CodigoConfirmacao.objects.get(codigo=codigo_digitado, maquina=maquina, tipo_operacao=tipo_operacao)
-                if codigo_obj.usuario_solicitante == request.user:
-                    message = 'Você não pode confirmar uma operação que você mesmo solicitou.'
-                    if is_ajax: return JsonResponse({'status': 'error', 'message': message}, status=403)
-                    messages.error(request, message)
-                    return redirect('home')
+    usuario = request.user
 
-                if codigo_obj.is_valid():
-                    codigo_obj.status = 'confirmado'
-                    codigo_obj.save()
+    if usuario.is_superuser or usuario.user_type == 'admin':
+        messages.error(request, "Administradores não podem solicitar operações.")
+        return redirect('home')
 
-                    if tipo_operacao == 'retirada':
-                        maquina.status = 'em_uso'
-                        maquina.posse_atual = codigo_obj.usuario_solicitante
-                        maquina.save()
-                        Operacao.objects.create(maquina=maquina, usuario_principal=codigo_obj.usuario_solicitante, usuario_confirmacao=request.user, tipo_operacao='retirada')
-                        success_message = f'Máquina "{maquina.nome}" retirada com sucesso!'
-                    else: # devolução
-                        maquina.status = 'disponivel'
-                        maquina.posse_atual = None
-                        maquina.save()
-                        Operacao.objects.create(maquina=maquina, usuario_principal=codigo_obj.usuario_solicitante, usuario_confirmacao=request.user, tipo_operacao='devolucao')
-                        success_message = f'Máquina "{maquina.nome}" devolvida com sucesso!'
+    if Solicitacao.objects.filter(maquina=maquina, status__startswith='pendente').exists():
+        messages.warning(request, f'A máquina "{maquina.nome}" já possui uma operação pendente.')
+        return redirect('home')
 
-                    if is_ajax: return JsonResponse({'status': 'success', 'message': success_message})
-                    messages.success(request, success_message)
-                    return redirect('home')
-                else:
-                    if codigo_obj.status == 'pendente':
-                        codigo_obj.status = 'expirado'
-                        codigo_obj.save()
-                    message = 'Código expirado ou já utilizado. Por favor, solicite um novo.'
-                    if is_ajax: return JsonResponse({'status': 'error', 'message': message}, status=400)
-                    messages.error(request, message)
-            except CodigoConfirmacao.DoesNotExist:
-                message = 'Código inválido.'
-                if is_ajax: return JsonResponse({'status': 'error', 'message': message}, status=400)
-                messages.error(request, message)
-        else:
-            if is_ajax: return JsonResponse({'status': 'error', 'message': 'O código deve conter 6 dígitos.'}, status=400)
-    form = CodigoConfirmacaoForm()
-    context = {'form': form, 'maquina': maquina, 'tipo_operacao': tipo_operacao.capitalize()}
-    return render(request, 'core/confirmar_operacao.html', context)
+    if Solicitacao.objects.filter(solicitante=usuario, status__startswith='pendente').exists():
+        messages.warning(request, 'Você já possui uma solicitação em andamento.')
+        return redirect('home')
+
+    if tipo_operacao == 'retirada':
+        if maquina.status != 'disponivel':
+            messages.error(request, 'Esta máquina não está disponível para retirada.')
+            return redirect('home')
+        Solicitacao.objects.create(maquina=maquina, solicitante=usuario, tipo='retirada', status='pendente_aprovacao')
+        messages.success(request, f'A sua solicitação para retirar "{maquina.nome}" foi enviada para aprovação.')
+
+    elif tipo_operacao == 'devolucao':
+        if maquina.posse_atual != usuario:
+            messages.error(request, 'Você não pode devolver uma máquina que não está na sua posse.')
+            return redirect('home')
+        Solicitacao.objects.create(maquina=maquina, solicitante=usuario, tipo='devolucao', status='pendente_aprovacao', posse_anterior=usuario)
+        messages.success(request, f'A sua solicitação para devolver "{maquina.nome}" foi enviada para aprovação.')
+
+    elif tipo_operacao == 'troca':
+        if maquina.status != 'em_uso' or maquina.posse_atual == usuario:
+            messages.error(request, 'Você não pode solicitar a troca desta máquina.')
+            return redirect('home')
+        Solicitacao.objects.create(maquina=maquina, solicitante=usuario, tipo='troca', status='pendente_confirmacao', posse_anterior=maquina.posse_atual)
+        messages.success(request, f'A sua solicitação de troca para "{maquina.nome}" foi enviada para {maquina.posse_atual.get_full_name()}.')
+
+    return redirect('home')
+
 
 @login_required
-def verificar_status_operacao(request, codigo_id):
-    try:
-        codigo = CodigoConfirmacao.objects.get(id=codigo_id, usuario_solicitante=request.user)
-        if codigo.status == 'confirmado':
-            return JsonResponse({'status': 'confirmado'})
+def confirmar_troca(request, solicitacao_id):
+    solicitacao = get_object_or_404(Solicitacao, id=solicitacao_id, status='pendente_confirmacao')
+    if solicitacao.posse_anterior != request.user:
+        messages.error(request, "Você não tem permissão para confirmar esta troca.")
+        return redirect('home')
 
-        if not codigo.is_valid() and codigo.status == 'pendente':
-            codigo.status = 'expirado'
-            codigo.save()
-            return JsonResponse({'status': 'expirado'})
+    solicitacao.status = 'pendente_aprovacao'
+    solicitacao.save()
+    messages.info(request, f'Troca confirmada. Agora a aguardar aprovação do administrador.')
+    return redirect('home')
 
-        return JsonResponse({'status': codigo.status})
-    except CodigoConfirmacao.DoesNotExist:
-        return JsonResponse({'status': 'expirado'})
+@login_required
+def cancelar_solicitacao(request, solicitacao_id):
+    solicitacao = get_object_or_404(Solicitacao, id=solicitacao_id, solicitante=request.user)
+    if not solicitacao.status.startswith('pendente'):
+        messages.warning(request, "Esta solicitação não pode mais ser cancelada.")
+        return redirect('home')
 
-@admin_required
-def listar_maquinas(request):
-    maquinas = Maquina.objects.all()
-    return render(request, 'core/listar_maquinas.html', {'maquinas': maquinas})
-
-@admin_required
-def criar_maquina(request):
-    if request.method == 'POST':
-        form = MaquinaForm(request.POST, request.FILES)
-        if form.is_valid():
-            form.save()
-            messages.success(request, 'Máquina cadastrada com sucesso!')
-            return redirect('listar_maquinas')
-    else:
-        form = MaquinaForm()
-    return render(request, 'core/form_maquina.html', {'form': form, 'titulo': 'Cadastrar Nova Máquina'})
+    solicitacao.delete()
+    messages.info(request, "A sua solicitação foi cancelada.")
+    return redirect('home')
 
 @admin_required
-def editar_maquina(request, maquina_id):
-    maquina = get_object_or_404(Maquina, id=maquina_id)
-    if request.method == 'POST':
-        form = MaquinaForm(request.POST, request.FILES, instance=maquina)
-        if form.is_valid():
-            form.save()
-            messages.success(request, 'Máquina atualizada com sucesso!')
-            return redirect('listar_maquinas')
-    else:
-        form = MaquinaForm(instance=maquina)
-    return render(request, 'core/form_maquina.html', {'form': form, 'titulo': f'Editar Máquina: {maquina.nome}'})
+def processar_solicitacao(request, solicitacao_id, acao):
+    solicitacao = get_object_or_404(Solicitacao, id=solicitacao_id, status='pendente_aprovacao')
+    maquina = solicitacao.maquina
 
-@admin_required
-def remover_maquina(request, maquina_id):
-    maquina = get_object_or_404(Maquina, id=maquina_id)
-    if request.method == 'POST':
-        maquina.delete()
-        messages.success(request, f'Máquina "{maquina.nome}" removida com sucesso.')
-        return redirect('listar_maquinas')
-    return render(request, 'core/confirmar_remocao.html', {'maquina': maquina})
+    if acao == 'aprovar':
+        if solicitacao.tipo == 'retirada':
+            maquina.status = 'em_uso'
+            maquina.posse_atual = solicitacao.solicitante
+            maquina.save()
+            messages.success(request, f'Retirada de "{maquina.nome}" por {solicitacao.solicitante.get_full_name()} aprovada.')
+
+        elif solicitacao.tipo == 'devolucao':
+            maquina.status = 'disponivel'
+            maquina.posse_atual = None
+            maquina.save()
+            messages.success(request, f'Devolução de "{maquina.nome}" por {solicitacao.solicitante.get_full_name()} aprovada.')
+
+        elif solicitacao.tipo == 'troca':
+            maquina.posse_atual = solicitacao.solicitante
+            maquina.save()
+            messages.success(request, f'Troca de "{maquina.nome}" para {solicitacao.solicitante.get_full_name()} aprovada.')
+
+        solicitacao.delete()
+    elif acao == 'negar':
+        messages.warning(request, f'Solicitação de {solicitacao.tipo} para "{maquina.nome}" foi negada.')
+        solicitacao.delete()
+
+    return redirect('home')
+

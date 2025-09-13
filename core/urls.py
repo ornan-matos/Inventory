@@ -1,15 +1,19 @@
-
 from django.urls import path
 from . import views
 
 urlpatterns = [
+    # Rota principal que carrega o template base da dashboard
     path('', views.home, name='home'),
 
-    path('solicitar-retirada/<int:maquina_id>/', views.solicitar_retirada, name='solicitar_retirada'),
-    path('confirmar/<int:maquina_id>/<str:tipo_operacao>/', views.confirmar_operacao, name='confirmar_operacao'),
+   
+    path('dashboard-status/', views.dashboard_status, name='dashboard_status'),
 
-    path('solicitar-devolucao/<int:maquina_id>/', views.solicitar_devolucao, name='solicitar_devolucao'),
+    # Ações do usuário comum
+    path('solicitar/<int:maquina_id>/<str:tipo_operacao>/', views.solicitar_operacao, name='solicitar_operacao'),
+    path('confirmar-troca/<int:solicitacao_id>/', views.confirmar_troca, name='confirmar_troca'),
+    path('cancelar-solicitacao/<int:solicitacao_id>/', views.cancelar_solicitacao, name='cancelar_solicitacao'),
 
-    path('verificar-status/<int:codigo_id>/', views.verificar_status_operacao, name='verificar_status_operacao'),
-
+    # Ações do administrador
+    path('processar/<int:solicitacao_id>/<str:acao>/', views.processar_solicitacao, name='processar_solicitacao'),
 ]
+

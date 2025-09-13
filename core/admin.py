@@ -2,8 +2,9 @@ import csv
 from django.contrib import admin
 from django.http import HttpResponse
 from django.contrib.auth.admin import UserAdmin
+from django.utils.html import format_html
 from django.utils.translation import gettext_lazy as _
-from .models import CustomUser, Maquina, Operacao, CodigoConfirmacao
+from .models import CustomUser, Maquina, Operacao
 
 @admin.register(CustomUser)
 class CustomUserAdmin(UserAdmin):
@@ -11,7 +12,7 @@ class CustomUserAdmin(UserAdmin):
     list_filter = ('is_staff', 'is_superuser', 'is_active', 'groups', 'user_type')
 
     fieldsets = (
-        (None, {"fields": ("username", "password")}),
+        (None, {"fields": ("username", "password_info")}),
         (_("Personal info"), {"fields": ("first_name", "last_name", "email")}),
         (
             _("Permissions"),
@@ -25,20 +26,22 @@ class CustomUserAdmin(UserAdmin):
                 ),
             },
         ),
-        (_("Important dates"), {"fields": ("last_login", "date_joined")}),
         (_("Informações Adicionais"), {'fields': ('user_type', 'foto')}),
     )
 
-    change_password_help_text = _(
-        "Senhas não são armazenadas, então não é possível ver a senha "
-        "deste usuário. Você pode alterá-la usando <a href=\"../password/\">este link</a>."
-    )
+    readonly_fields = ('password_info',)
+
+    def password_info(self, obj):
+        return format_html(
+            'Para alterar a senha use <a href="../password/">este link</a>.'
+        )
+    password_info.short_description = "Palavra-passe" # Define o rótulo do campo
 
 @admin.register(Maquina)
 class MaquinaAdmin(admin.ModelAdmin):
-    list_display = ('nome', 'tipo_modelo', 'status', 'posse_atual')
-    list_filter = ('status',)
-    search_fields = ('nome', 'tipo_modelo')
+    list_display = ('nome', 'categoria', 'tipo_maquina', 'status', 'posse_atual')
+    list_filter = ('status', 'categoria', 'tipo_maquina')
+    search_fields = ('nome', 'tipo_modelo', 'patrimonio', 'numero_serie')
 
 @admin.action(description='Exportar selecionados para CSV (Detalhado)')
 def exportar_para_csv(modeladmin, request, queryset):
@@ -46,8 +49,8 @@ def exportar_para_csv(modeladmin, request, queryset):
     response['Content-Disposition'] = 'attachment; filename="historico_operacoes_detalhado.csv"'
     writer = csv.writer(response)
     writer.writerow([
-        'Data', 'Horário', 'Operação', 'Usuário Principal', 'Usuário Confirmação',
-        'Máquina', 'Patrimônio', 'Nº de Série', 'Nº de Vinculação'
+        'Data', 'Horário', 'Operação', 'Utilizador Principal', 'Utilizador Confirmação',
+        'Máquina', 'Património', 'Nº de Série', 'Nº de Vinculação'
     ])
     for op in queryset.order_by('-data_hora'):
         writer.writerow([
@@ -70,7 +73,7 @@ class OperacaoAdmin(admin.ModelAdmin):
     search_fields = ('usuario_principal__username', 'maquina__nome', 'maquina__patrimonio', 'maquina__numero_serie')
     actions = [exportar_para_csv]
 
-    @admin.display(description='Patrimônio')
+    @admin.display(description='Património')
     def get_patrimonio(self, obj):
         return obj.maquina.patrimonio
 
@@ -82,12 +85,4 @@ class OperacaoAdmin(admin.ModelAdmin):
     def has_change_permission(self, request, obj=None): return False
     def has_delete_permission(self, request, obj=None): return False
 
-@admin.register(CodigoConfirmacao)
-class CodigoConfirmacaoAdmin(admin.ModelAdmin):
-    list_display = ('codigo', 'usuario_solicitante', 'maquina', 'tipo_operacao', 'criado_em', 'status')
-    list_filter = ('status', 'tipo_operacao')
-    search_fields = ('codigo', 'usuario_solicitante__username', 'maquina__nome')
 
-    def has_add_permission(self, request): return False
-    def has_change_permission(self, request, obj=None): return False
-    def has_delete_permission(self, request, obj=None): return False
