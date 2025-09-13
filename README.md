@@ -91,7 +91,7 @@ A interface é construída com tecnologias web padrão, com foco numa experiênc
     podman build -t imagem-sistema .
     ```
 
-4.  **Criar o Arquivo de Migração Inicial (Apenas na primeira vez)**
+4.  **Criar o Arquivo de Migração Inicial (Apenas na primeira vez).**
     Este passo crucial cria as "instruções" para o banco de dados.
     ```bash
     # Limpe migrações antigas se existirem
@@ -131,6 +131,9 @@ A interface é construída com tecnologias web padrão, com foco numa experiênc
 
 #### Dashboard
 ![Dashboard](/img/Screen_Capture/captura1.png)
+
+#### Dashboard Operações
+![Dashboard_OP](/img/Screen_Capture/captura4.png)
 
 #### Painel Super Admin
 ![SuperAdmin](/img/Screen_Capture/captura2.png)
