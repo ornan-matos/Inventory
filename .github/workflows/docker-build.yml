@@ -27,4 +27,4 @@ jobs:
       with:
         context: .
         push: true
-        tags: ornanmatos/inventory-pos/imagem-sistema:latest
+        tags: ornanmatos/inventory-pos:latest
