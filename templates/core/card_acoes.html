@@ -1,0 +1,15 @@
+<div class="d-grid gap-2">
+    {% if maquina.status == 'disponivel' %}
+        <a href="{% url 'solicitar_operacao' maquina.id 'retirada' %}" class="btn btn-primary">
+            <i class="bi bi-arrow-down-square"></i> Solicitar Retirada
+        </a>
+    {% elif maquina.posse_atual == user %}
+        <a href="{% url 'solicitar_operacao' maquina.id 'devolucao' %}" class="btn btn-info">
+            <i class="bi bi-arrow-up-square"></i> Solicitar Devolução
+        </a>
+    {% else %}
+        <a href="{% url 'solicitar_operacao' maquina.id 'troca' %}" class="btn btn-warning">
+            <i class="bi bi-arrow-repeat"></i> Solicitar Troca
+        </a>
+    {% endif %}
+</div>

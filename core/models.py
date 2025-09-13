@@ -17,6 +17,17 @@ class CustomUser(AbstractUser):
 
 class Maquina(models.Model):
     STATUS_CHOICES = (('disponivel', 'Disponível'), ('em_uso', 'Em posse temporária'))
+    TIPO_MAQUINA_CHOICES = (('producao', 'Produção'), ('desenvolvimento', 'Desenvolvimento'))
+
+
+    CATEGORIA_CHOICES = (
+        ('POS', 'POS PDV'),
+        ('MINI PDV', 'Mini PDV'),
+        ('TOTENS', 'Totens Desenvolvimento'),
+        ('OUTROS', 'Outros Equipamentos'),
+        ('HOME OU EVENTOS', 'Fora da POS'),
+    )
+
     nome = models.CharField(max_length=100, unique=True)
     tipo_modelo = models.CharField(max_length=100, verbose_name="Tipo/Modelo")
     foto = models.ImageField(upload_to='fotos_maquinas/', null=True, blank=True)
@@ -25,53 +36,55 @@ class Maquina(models.Model):
     patrimonio = models.CharField(max_length=50, blank=True, null=True, verbose_name="Patrimônio")
     numero_serie = models.CharField(max_length=100, blank=True, null=True, verbose_name="Número de Série")
     numero_vinculacao = models.CharField(max_length=100, blank=True, null=True, verbose_name="Número de Vinculação")
+    tipo_maquina = models.CharField(max_length=20, choices=TIPO_MAQUINA_CHOICES, default='producao', verbose_name="Tipo de Máquina")
+    categoria = models.CharField(max_length=50, choices=CATEGORIA_CHOICES, default='Outros', null=True, blank=True)
+
     class Meta:
         verbose_name = "Máquina"
         verbose_name_plural = "Máquinas"
+
     def __str__(self):
         return f"{self.nome} ({self.tipo_modelo})"
 
+class Solicitacao(models.Model):
+    TIPO_SOLICITACAO_CHOICES = (
+        ('retirada', 'Retirada'),
+        ('devolucao', 'Devolução'),
+        ('troca', 'Troca'),
+    )
+    STATUS_SOLICITACAO_CHOICES = (
+        ('pendente_aprovacao', 'Pendente de Aprovação do Admin'),
+        ('pendente_confirmacao', 'Pendente de Confirmação do Par'),
+        ('aprovada', 'Aprovada'),
+        ('negada', 'Negada'),
+    )
+    maquina = models.ForeignKey(Maquina, on_delete=models.CASCADE, related_name='solicitacoes')
+    solicitante = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='solicitacoes_feitas')
+    posse_anterior = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, blank=True, related_name='solicitacoes_cedidas')
+    tipo = models.CharField(max_length=20, choices=TIPO_SOLICITACAO_CHOICES)
+    status = models.CharField(max_length=30, choices=STATUS_SOLICITACAO_CHOICES, default='pendente_aprovacao')
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Solicitação"
+        verbose_name_plural = "Solicitações"
+        ordering = ['-criado_em']
+
+    def __str__(self):
+        return f"Solicitação de {self.tipo} para {self.maquina.nome} por {self.solicitante.username}"
+
 class Operacao(models.Model):
-    TIPO_OPERACAO_CHOICES = (('retirada', 'Retirada'), ('devolucao', 'Devolução'))
+    TIPO_OPERACAO_CHOICES = (('retirada', 'Retirada'), ('devolucao', 'Devolução'), ('troca', 'Troca'))
     maquina = models.ForeignKey(Maquina, on_delete=models.CASCADE, related_name='operacoes')
     usuario_principal = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='operacoes_iniciadas')
     usuario_confirmacao = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='operacoes_confirmadas')
     tipo_operacao = models.CharField(max_length=20, choices=TIPO_OPERACAO_CHOICES)
     data_hora = models.DateTimeField(auto_now_add=True)
+
     class Meta:
         verbose_name = "Histórico de Operação"
         verbose_name_plural = "Históricos de Operações"
+
     def __str__(self):
         return f"{self.get_tipo_operacao_display()} de {self.maquina.nome} por {self.usuario_principal.username}"
 
-class CodigoConfirmacao(models.Model):
-    # --- ALTERAÇÕES ---
-    STATUS_CHOICES = (
-        ('pendente', 'Pendente'),
-        ('confirmado', 'Confirmado'),
-        ('expirado', 'Expirado'),
-    )
-    codigo = models.CharField(max_length=6, unique=True)
-    usuario_solicitante = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
-    maquina = models.ForeignKey(Maquina, on_delete=models.CASCADE)
-    tipo_operacao = models.CharField(max_length=20)
-    criado_em = models.DateTimeField(auto_now_add=True)
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pendente')
-    # O campo 'expira_em' foi removido para usarmos um cálculo dinâmico.
-
-    class Meta:
-        verbose_name = "Código de Confirmação"
-        verbose_name_plural = "Códigos de Confirmação"
-
-    def save(self, *args, **kwargs):
-        if not self.codigo:
-            self.codigo = ''.join(random.choices(string.digits, k=6))
-        super().save(*args, **kwargs)
-
-    def is_valid(self):
-        if self.status != 'pendente':
-            return False
-        return timezone.now() < self.criado_em + timedelta(seconds=90)
-
-    def __str__(self):
-        return f"Código {self.codigo} para {self.usuario_solicitante.username}"

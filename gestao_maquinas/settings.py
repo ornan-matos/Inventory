@@ -9,7 +9,7 @@ SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-your-secret-ke
 
 DEBUG = os.environ.get('DJANGO_DEBUG', '') != 'False'
 
-ALLOWED_HOSTS = ['awspos.duckdns.org']
+ALLOWED_HOSTS = ['awspos.duckdns.org', 'localhost', '127.0.0.1']
 
 CSRF_TRUSTED_ORIGINS = ['https://awspos.duckdns.org']
 

@@ -1,0 +1,63 @@
+{% load static %}
+<div class="col">
+    {% with solicitacao=solicitacoes_por_maquina|get_item:maquina.id %}
+    <div class="card h-100 shadow-sm {% if solicitacao %}border-warning{% endif %}">
+
+        <div class="position-relative">
+            {% if maquina.foto %}
+                <img src="{{ maquina.foto.url }}" class="card-img-top" alt="Foto de {{ maquina.nome }}">
+            {% else %}
+                <img src="https://placehold.co/600x400/e9ecef/495057?text=Sem+Foto" class="card-img-top" alt="Sem foto">
+            {% endif %}
+
+            <!-- Tag de Desenvolvimento -->
+            {% if maquina.tipo_maquina == 'desenvolvimento' %}
+            <span class="position-absolute top-0 start-0 m-2 badge rounded-pill bg-info-subtle text-info-emphasis border border-info-subtle">
+                <i class="bi bi-tools"></i> Desenvolvimento
+            </span>
+            {% endif %}
+        </div>
+
+
+        <div class="card-body d-flex flex-column">
+            <div class="d-flex justify-content-between">
+                <h5 class="card-title">{{ maquina.nome }}</h5>
+                {% if maquina.patrimonio %}
+                    <span class="badge bg-light text-dark align-self-start">#{{ maquina.patrimonio }}</span>
+                {% endif %}
+            </div>
+            <p class="card-text text-muted">{{ maquina.tipo_modelo }}</p>
+
+            <!-- Status da Máquina -->
+            {% if maquina.status == 'disponivel' %}
+                <p class="mb-2">
+                    <span class="badge bg-success-subtle text-success-emphasis rounded-pill status-badge">
+                        <i class="bi bi-check-circle-fill"></i> Disponível
+                    </span>
+                </p>
+            {% else %}
+                <p class="mb-2">
+                    <span class="badge bg-warning-subtle text-warning-emphasis rounded-pill status-badge">
+                        <i class="bi bi-person-fill-gear"></i> Em posse temporária
+                    </span>
+                </p>
+                <div class="d-flex align-items-center small mb-3">
+                    {% if maquina.posse_atual.foto %}
+                        <img src="{{ maquina.posse_atual.foto.url }}" class="rounded-circle me-2" width="30" height="30" alt="Foto de {{ maquina.posse_atual.get_full_name }}">
+                    {% endif %}
+                    <span>Com: <strong>{{ maquina.posse_atual.get_full_name|default:maquina.posse_atual.username }}</strong></span>
+                </div>
+            {% endif %}
+
+            <!-- Seção de Solicitações e Botões -->
+            <div class="mt-auto">
+                {% if solicitacao %}
+                    {% include 'core/partials/card_solicitacao.html' with solicitacao=solicitacao %}
+                {% else %}
+                    {% include 'core/partials/card_acoes.html' %}
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endwith %}
+</div>

@@ -1,0 +1,48 @@
+<div class="alert alert-warning p-2">
+    <div class="d-flex align-items-center mb-2">
+        {% if solicitacao.solicitante.foto %}
+        <img src="{{ solicitacao.solicitante.foto.url }}" class="rounded-circle me-2" width="40" height="40" alt="Foto de {{ solicitacao.solicitante.get_full_name }}">
+        {% endif %}
+        <div>
+            <strong class="d-block">{{ solicitacao.solicitante.get_full_name }}</strong>
+            <small class="text-muted">
+                {% if solicitacao.tipo == 'retirada' %}
+                    solicitou a retirada
+                {% elif solicitacao.tipo == 'devolucao' %}
+                    solicitou a devolução
+                {% elif solicitacao.tipo == 'troca' %}
+                    solicitou a troca
+                {% endif %}
+            </small>
+        </div>
+    </div>
+
+    <!-- Ações para o Administrador -->
+    {% if user.is_superuser or user.user_type == 'admin' %}
+        {% if solicitacao.status == 'pendente_aprovacao' %}
+            <div class="d-grid gap-1">
+                <a href="{% url 'processar_solicitacao' solicitacao.id 'aprovar' %}" class="btn btn-sm btn-success">Aprovar</a>
+                <a href="{% url 'processar_solicitacao' solicitacao.id 'negar' %}" class="btn btn-sm btn-danger">Negar</a>
+            </div>
+        {% elif solicitacao.status == 'pendente_confirmacao' %}
+            <div class="text-center small fst-italic">Aguardando confirmação do colaborador <strong>{{ solicitacao.posse_anterior.get_full_name }}</strong>.</div>
+        {% endif %}
+
+    <!-- Ação para o Usuário que possui a máquina (confirmar troca) -->
+    {% elif solicitacao.status == 'pendente_confirmacao' and solicitacao.maquina.posse_atual == user %}
+        <p class="small text-center mb-1"><strong>{{ solicitacao.solicitante.get_full_name }}</strong> quer esta máquina.</p>
+        <div class="d-grid">
+            <a href="{% url 'confirmar_troca' solicitacao.id %}" class="btn btn-sm btn-warning">Confirmar Intenção de Troca</a>
+        </div>
+
+    <!-- Mensagem para o solicitante -->
+    {% elif solicitacao.solicitante == user %}
+         <div class="text-center small fst-italic">
+            {% if solicitacao.status == 'pendente_aprovacao' %}
+                Aguardando aprovação do administrador...
+            {% elif solicitacao.status == 'pendente_confirmacao' %}
+                Aguardando confirmação de <strong>{{ solicitacao.posse_anterior.get_full_name }}</strong>...
+            {% endif %}
+         </div>
+    {% endif %}
+</div>

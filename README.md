@@ -1,35 +1,44 @@
-# Sistema de Gestão de Máquinas (POS Controle)
+# Sistema de Inventário de Máquinas PDV
 
 Este projeto é um sistema web desenvolvido em Python com o framework Django para gerenciar a posse temporária de máquinas de cartão de crédito (POS) dentro de uma equipe. A aplicação é containerizada com Podman para garantir um ambiente de execução consistente e portável.
 
+O sistema evoluiu de um modelo de confirmação por códigos para uma **dashboard dinâmica e centralizada**, onde os administradores aprovam ou negam solicitações em tempo real, proporcionando um fluxo de trabalho mais moderno e eficiente.
+
+## Funcionalidades Principais
+
+* **Dashboard em Tempo Real:** A interface principal atualiza-se automaticamente a cada 5 segundos, exibindo o status de todas as máquinas sem a necessidade de recarregar a página.
+* **Fluxo de Aprovação Centralizado:** Administradores possuem uma visão completa de todas as solicitações pendentes (retirada, devolução e troca) e podem aprová-las ou negá-las diretamente da dashboard.
+* **Solicitações Intuitivas:** Colaboradores podem solicitar máquinas disponíveis, iniciar a devolução das suas próprias máquinas ou pedir a troca de equipamentos que estão com outros colegas.
+* **Organização e Pesquisa:** As máquinas são agrupadas por categorias retráteis e uma barra de pesquisa permite filtrar o inventário por nome, modelo ou património.
+* **Notificações Visuais:** O sistema utiliza mensagens de feedback (sucesso, erro, aviso) para informar os utilizadores sobre o resultado das suas ações.
+
 ## Arquitetura
 
-A aplicação segue uma arquitetura moderna e escalável, estruturada de forma a manter a separação de responsabilidades entre backend, frontend, banco de dados e infraestrutura.
+A aplicação segue uma arquitetura moderna e escalável, estruturada para manter a separação de responsabilidades.
 
 ### Backend (Django)
 
-O backend é construído sobre o framework Django, utilizando o padrão arquitetural **MVT (Model-View-Template)**:
+O backend é construído sobre o padrão **MVT (Model-View-Template)**:
 
-* **Model (`core/models.py`):** Define a estrutura do banco de dados através de classes Python. O ORM (Object-Relational Mapper) do Django converte essas classes em tabelas e consultas SQL, abstraindo a complexidade da comunicação com o banco de dados. Os modelos principais são `Maquina`, `CustomUser` (usuário), `Operacao` (histórico) e `CodigoConfirmacao`.
-* **View (`core/views.py`):** Contém a lógica de negócio da aplicação. Cada função (ou classe) em `views.py` é responsável por receber uma requisição HTTP, processar os dados necessários (consultando os Models), e renderizar uma resposta, geralmente na forma de um template HTML.
-* **Template (`templates/`):** São os arquivos HTML que compõem a interface do usuário. Eles são renderizados pelas Views e podem exibir dados dinâmicos passados pelo backend.
+* **Model (`core/models.py`):** Define a estrutura do banco de dados. Os modelos principais são `Maquina`, `CustomUser` (utilizador), `Operacao` (histórico) e `Solicitacao`, que é o coração do novo fluxo de aprovações.
+* **View (`core/views.py`):** Contém a lógica de negócio. A view principal (`dashboard_status`) funciona como uma API, devolvendo o estado completo do inventário em formato JSON para ser renderizado dinamicamente pelo frontend.
+* **Template (`templates/`):** O `home.html` serve como a base para a aplicação de página única (SPA-like), enquanto os templates parciais são utilizados para renderizar componentes específicos.
 
 ### Frontend
 
-A interface do usuário é construída com tecnologias web padrão, focando em simplicidade e responsividade:
+A interface é construída com tecnologias web padrão, com foco numa experiência reativa:
 
-* **HTML5:** Estrutura o conteúdo das páginas.
-* **Bootstrap 5:** Framework CSS utilizado para estilização, layout em grid, e componentes de interface (botões, cards, formulários). Garante que a aplicação seja totalmente responsiva e se adapte a diferentes tamanhos de tela.
-* **JavaScript (Puro):** Utilizado para adicionar interatividade e funcionalidades em tempo real, como o contador de expiração do código e a atualização dinâmica das páginas de confirmação via AJAX, que se comunica com o backend sem a necessidade de recarregar a página.
+* **HTML5 e Bootstrap 5:** Estruturam o conteúdo e garantem um design responsivo e moderno.
+* **JavaScript (Puro):** O frontend é altamente dinâmico. Um script em `home.html` faz chamadas periódicas (polling) a um endpoint do Django (`/dashboard-status/`), recebe os dados em JSON e reconstrói a interface do utilizador em tempo real, criando a sensação de uma aplicação reativa sem a necessidade de frameworks complexos.
 
 ### Banco de Dados
 
-* **SQLite:** Um banco de dados leve e baseado em arquivo, ideal para desenvolvimento e aplicações de pequeno a médio porte. O arquivo do banco de dados é persistido em um volume externo do Podman para garantir que os dados não sejam perdidos quando o contêiner é recriado.
+* **SQLite:** Um banco de dados leve e baseado em ficheiros, ideal para desenvolvimento e aplicações de pequeno a médio porte. Os dados são persistidos num volume externo do Podman.
 
 ### Infraestrutura
 
-* **Podman:** A aplicação é totalmente containerizada, o que garante que ela rode da mesma forma em qualquer ambiente. O `Dockerfile` define todas as dependências e configurações necessárias para construir a imagem da aplicação.
-* **Nginx:** Em um ambiente de produção, um servidor web como o Nginx atua como um proxy reverso, recebendo as requisições externas (HTTPS na porta 443), gerenciando os certificados de segurança (SSL/TLS) e repassando o tráfego para a aplicação Django que roda dentro do contêiner.
+* **Podman:** A aplicação é totalmente containerizada, garantindo consistência entre ambientes.
+* **Nginx (Opcional):** Em produção, um proxy reverso como o Nginx pode ser utilizado para gerir HTTPS e servir ficheiros estáticos de forma mais eficiente.
 
 ## Estrutura do Projeto
 
@@ -37,27 +46,25 @@ A interface do usuário é construída com tecnologias web padrão, focando em s
 .
 ├── core/                  # Principal aplicativo Django
 │   ├── migrations/        # Arquivos de migração do banco de dados
-│   ├── management/        # Comandos de gerenciamento customizados
-│   ├── static/            # Arquivos estáticos (imagens, CSS, JS do app)
+│   ├── management/        # Comandos de gestão personalizados
+│   ├── static/            # Ficheiros estáticos (imagens, CSS, JS)
 │   ├── admin.py           # Configuração do painel de administração
-│   ├── models.py          # Definição dos modelos do banco de dados
+│   ├── models.py          # Definição dos modelos da base de dados
 │   ├── views.py           # Lógica de negócio (controllers)
-│   └── urls.py            # Rotas específicas do aplicativo 'core'
+│   ├── urls.py            # Rotas específicas da aplicação 'core'
+│   └── utils.py           # Funções utilitárias (ex: decoradores)
 ├── gestao_maquinas/       # Configurações do projeto Django
 │   ├── settings.py        # Configurações principais do projeto
 │   └── urls.py            # Rotas principais do projeto
 ├── templates/             # Templates HTML globais
-│   ├── admin/             # Templates para customizar o painel de admin
-│   └── core/              # Templates do aplicativo 'core'
-├── Dockerfile             # Receita para construir a imagem do contêiner
-├── entrypoint.sh          # Script de inicialização do contêiner
+│   └── core/              # Templates da aplicação 'core'
+│       └── partials/      # Pequenos templates reutilizáveis (já não são usados)
+├── Dockerfile             # Receita para construir a imagem do contentor
+├── entrypoint.sh          # Script de inicialização do contentor
 ├── manage.py              # Utilitário de linha de comando do Django
 └── requirements.txt       # Lista de dependências Python
 ```
 
-## Como Executar o Projeto
-
-Siga os passos abaixo para configurar e executar a aplicação em um novo ambiente com Podman.
 
 ### Pré-requisitos
 
