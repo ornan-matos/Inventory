@@ -3,7 +3,7 @@ name: Build Docker Image Prod
 on:
   push:
     branches:
-      - pos-main
+      - main
 
 jobs:
   build-and-push:
@@ -27,4 +27,4 @@ jobs:
       with:
         context: .
         push: true
-        tags: ornanmatos/inventory-pos:latest
+        tags: ornanmatos/inventory:latest
