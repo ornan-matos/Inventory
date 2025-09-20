@@ -3,7 +3,7 @@ name: Build Docker Image Prod
 on:
   push:
     branches:
-      - main
+      - main-off
 
 jobs:
   build-and-push:

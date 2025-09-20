@@ -1,6 +1,6 @@
 # Sistema de Inventário de Máquinas PDV
 
-Este projeto é um sistema web desenvolvido em Python com o framework Django para gerenciar a posse temporária de máquinas de cartão de crédito (POS) dentro de uma equipe. A aplicação é containerizada com Podman para garantir um ambiente de execução consistente e portável.
+Este projeto é um sistema web desenvolvido em Python com o framework Django para gerenciar a posse temporária de máquinas de cartão de crédito (TECH Flux) dentro de uma equipe. A aplicação é containerizada com Podman para garantir um ambiente de execução consistente e portável.
 
 O sistema evoluiu de um modelo de confirmação por códigos para uma **dashboard dinâmica e centralizada**, onde os administradores aprovam ou negam solicitações em tempo real, proporcionando um fluxo de trabalho mais moderno e eficiente.
 
